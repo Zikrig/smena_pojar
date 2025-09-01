@@ -77,6 +77,11 @@ async def handle_problem_report_photo(message: Message, state: FSMContext):
 # Обработчик для кнопки "решено"
 @router.callback_query(F.data == "resolve_problem")
 async def handle_problem_resolved(callback: CallbackQuery):
+    # Проверяем, что это сообщение о проблеме
+    if not callback.message.caption or not callback.message.caption.startswith("⚠️ Сообщение о проблеме"):
+        await callback.answer("Это не сообщение о проблеме!")
+        return
+    
     # Обновляем сообщение - убираем кнопку и добавляем пометку
     new_caption = callback.message.caption + "\n\n✅ РЕШЕНО"
     
@@ -97,3 +102,48 @@ async def handle_problem_resolved(callback: CallbackQuery):
     )
     
     await callback.answer("Проблема отмечена как решенная!")
+
+# Обработчик ответов на сообщения о проблемах
+@router.message(F.chat.type != ChatType.PRIVATE, F.reply_to_message)
+async def handle_problem_solution(message: Message):
+    replied_message = message.reply_to_message
+    # Проверяем, что это ответ на сообщение о проблеме
+
+    if not replied_message.caption or not replied_message.caption.startswith("⚠️"):
+        return
+    
+    # await messga.answer()
+    if (message.from_user and 
+        message.from_user.is_bot):
+        return
+    
+    
+    # Формируем ссылку на ответное сообщение
+    chat = await message.bot.get_chat(GROUP_ID)
+    if chat.username:
+        message_link = f"https://t.me/{chat.username}/{message.message_id}"
+    else:
+        # Для групп без username формируем ссылку через ID
+        chat_id = str(chat.id).replace('-100', '')
+        message_link = f"https://t.me/c/{chat_id}/{message.message_id}"
+    
+    # Обновляем сообщение о проблеме
+    new_caption = replied_message.caption
+    
+    # Проверяем, не добавлена ли уже ссылка на решение
+    if "📸 Решение:" not in new_caption:
+        new_caption += f"\n\n📸 Решение: {message_link}"
+    
+    try:
+        await message.bot.unpin_chat_message(
+            chat_id=GROUP_ID,
+            message_id=replied_message.message_id
+        )
+        await message.bot.edit_message_caption(
+            chat_id=GROUP_ID,
+            message_id=replied_message.message_id,
+            caption=new_caption,
+            parse_mode=ParseMode.HTML
+        )
+    except Exception as e:
+        print(f"Не удалось обновить сообщение о проблеме: {e}")
