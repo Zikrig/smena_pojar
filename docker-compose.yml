@@ -1,6 +1,19 @@
 version: '3.8'
 
 services:
+  postgres:
+    image: postgres:15
+    container_name: security-bot-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    env_file:
+      - .env
+
   telegram-bot:
     build: .
     container_name: security-telegram-bot
@@ -9,8 +22,13 @@ services:
       - .env
     volumes:
       - ./data:/app/data
+    depends_on:
+      - postgres
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "5"
+
+volumes:
+  postgres_data:

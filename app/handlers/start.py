@@ -9,7 +9,7 @@ from app.states import Form
 
 router = Router()
 
-@router.message(CommandStart())
+@router.message(F.chat.type == ChatType.PRIVATE, CommandStart())
 async def cmd_start(message: Message, state: FSMContext):
     await state.clear()
     await message.answer(

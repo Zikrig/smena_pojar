@@ -1,16 +1,27 @@
 from aiogram.utils.keyboard import ReplyKeyboardBuilder, InlineKeyboardBuilder
 from aiogram import types
+from aiogram.utils.keyboard import ReplyKeyboardBuilder, InlineKeyboardBuilder
+from aiogram import types
 
 def get_main_keyboard():
     builder = ReplyKeyboardBuilder()
+    # builder.add(types.KeyboardButton(text="📚 Инструктаж"))  # Новая кнопка
     builder.add(types.KeyboardButton(text="📹 Начало смены"))
     builder.add(types.KeyboardButton(text="🔄 Обход"))
     builder.add(types.KeyboardButton(text="🔥 Сварочные/огневые работы"))
     builder.add(types.KeyboardButton(text="⚠️ Проблема"))
     builder.add(types.KeyboardButton(text="🚨 ЧП"))
     builder.add(types.KeyboardButton(text="📞 Звонок в пожарную часть"))
-    builder.adjust(2, 1, 2, 1)
+    builder.adjust(2, 1, 2, 1)  # Обновляем раскладку
     return builder.as_markup(resize_keyboard=True)
+
+def get_instruction_keyboard():
+    builder = InlineKeyboardBuilder()
+    builder.button(text="Обход 1", callback_data="instruction_1")
+    builder.button(text="Обход 2", callback_data="instruction_2")
+    builder.button(text="Обход 3", callback_data="instruction_3")
+    builder.adjust(1)
+    return builder.as_markup()
 
 def get_cancel_keyboard():
     builder = InlineKeyboardBuilder()
