@@ -45,3 +45,8 @@ def get_patrol_keyboard():
     builder.button(text="❌ Отмена", callback_data="cancel_action")
     builder.adjust(1, 1, 1)
     return builder.as_markup()
+
+def get_resolved_keyboard():
+    builder = InlineKeyboardBuilder()
+    builder.button(text="✅ Решено", callback_data=f"resolve_problem")
+    return builder.as_markup()

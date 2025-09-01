@@ -1,13 +1,13 @@
 import os
 from aiogram import Router, F
-from aiogram.types import Message, FSInputFile
+from aiogram.types import Message, FSInputFile, CallbackQuery
 from aiogram.enums import ChatType 
 from aiogram.fsm.context import FSMContext
 from datetime import datetime
 from aiogram.enums import ParseMode
 
 from app.states import Form
-from app.keyboards import get_cancel_keyboard, get_main_keyboard
+from app.keyboards import get_cancel_keyboard, get_main_keyboard, get_resolved_keyboard
 from app.image_processor import ImageProcessor
 from app.config import GROUP_ID
 from app.utils import get_moscow_time
@@ -42,23 +42,58 @@ async def handle_problem_report_photo(message: Message, state: FSMContext):
     processor = ImageProcessor()
     processor.add_text_with_outline(input_path, output_path, current_time)
     
-    # Отправляем обработанное фото в группу
+    # Отправляем обработанное фото в группу с кнопкой "решено"
     output_file = FSInputFile(output_path)
     
     caption = f"⚠️ Сообщение о проблеме\n⏰ Время: {current_time}"
     if message.caption:
         caption += f"\n📝 Описание: {message.caption}"
     
-    await message.bot.send_photo(
+    # Отправляем сообщение с кнопкой
+    sent_message = await message.bot.send_photo(
         chat_id=GROUP_ID,
         photo=output_file,
         caption=caption,
-        parse_mode=ParseMode.HTML
+        parse_mode=ParseMode.HTML,
+        reply_markup=get_resolved_keyboard()
     )
+    
+    # Прикрепляем (закрепляем) сообщение в группе
+    try:
+        await message.bot.pin_chat_message(
+            chat_id=GROUP_ID,
+            message_id=sent_message.message_id
+        )
+    except Exception as e:
+        print(f"Не удалось закрепить сообщение: {e}")
     
     # Удаляем временные файлы
     os.remove(input_path)
     os.remove(output_path)
     
     await state.clear()
-    await message.answer("✅ Сообщение о проблеме отправлено в группу!", reply_markup=get_main_keyboard())
+    await message.answer("✅ Сообщение о проблеме отправлено и закреплено в группе!", reply_markup=get_main_keyboard())
+
+# Обработчик для кнопки "решено"
+@router.callback_query(F.data == "resolve_problem")
+async def handle_problem_resolved(callback: CallbackQuery):
+    # Обновляем сообщение - убираем кнопку и добавляем пометку
+    new_caption = callback.message.caption + "\n\n✅ РЕШЕНО"
+    
+    try:
+        # Открепляем сообщение
+        await callback.bot.unpin_chat_message(
+            chat_id=callback.message.chat.id,
+            message_id=callback.message.message_id
+        )
+    except Exception as e:
+        print(f"Не удалось открепить сообщение: {e}")
+    
+    # Редактируем сообщение
+    await callback.message.edit_caption(
+        caption=new_caption,
+        parse_mode=ParseMode.HTML,
+        reply_markup=None  # Убираем кнопку
+    )
+    
+    await callback.answer("Проблема отмечена как решенная!")
