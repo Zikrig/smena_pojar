@@ -49,25 +49,25 @@ dp.include_router(fire_call_router)
 # Функция для запуска планировщика
 async def start_scheduler():
     # Рассылка в 8:15 - обход базы 1
-    scheduler.add_job(
-        send_patrol_reminders,
-        CronTrigger(hour=8, minute=15),
-        args=[bot, "base1", EXCLUDED_USERS]
-    )
+    # scheduler.add_job(
+    #     send_patrol_reminders,
+    #     CronTrigger(hour=8, minute=15),
+    #     args=[bot, "base1", EXCLUDED_USERS]
+    # )
     
-    # Рассылка в 13:00 - обходы АТП и базы 2
-    scheduler.add_job(
-        send_patrol_reminders,
-        CronTrigger(hour=13, minute=00),
-        args=[bot, "all", EXCLUDED_USERS]
-    )
+    # # Рассылка в 13:00 - обходы АТП и базы 2
+    # scheduler.add_job(
+    #     send_patrol_reminders,
+    #     CronTrigger(hour=13, minute=00),
+    #     args=[bot, "all", EXCLUDED_USERS]
+    # )
     
-        # Рассылка в 20:00 - обходы базы 1
-    scheduler.add_job(
-        send_patrol_reminders,
-        CronTrigger(hour=20, minute=00),
-        args=[bot, "base1_evening", EXCLUDED_USERS]
-    )
+    #     # Рассылка в 20:00 - обходы базы 1
+    # scheduler.add_job(
+    #     send_patrol_reminders,
+    #     CronTrigger(hour=20, minute=00),
+    #     args=[bot, "base1_evening", EXCLUDED_USERS]
+    # )
     
     scheduler.start()
 

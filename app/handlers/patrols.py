@@ -76,6 +76,10 @@ async def process_patrol_photo(message: Message, state: FSMContext, patrol_type:
     current_step = data.get('patrol_step', 1)
     photo_paths = data.get('photo_paths', [])
     
+    # Получаем текущее время для этого конкретного фото
+    photo_time = get_moscow_time()
+    current_time_str = photo_time.strftime("%Y-%m-%d %H:%M:%S")
+    
     # Обрабатываем фото с наложением времени
     file_id = message.photo[-1].file_id
     file = await message.bot.get_file(file_id)
@@ -83,14 +87,16 @@ async def process_patrol_photo(message: Message, state: FSMContext, patrol_type:
     await message.bot.download_file(file.file_path, destination=input_path)
     
     # Накладываем время на фото
-    current_time = get_moscow_time().strftime("%Y-%m-%d %H:%M:%S")
     output_path = f"app/data/output_{file_id}.jpg"
     
     processor = ImageProcessor()
-    processor.add_text_with_outline(input_path, output_path, current_time)
+    processor.add_text_with_outline(input_path, output_path, current_time_str)
     
-    # Сохраняем путь к обработанному фото
-    photo_paths.append(output_path)
+    # Сохраняем путь к обработанному фото и время создания
+    photo_paths.append({
+        'path': output_path,
+        'time': photo_time  # Сохраняем объект времени, а не строку
+    })
     await state.update_data(photo_paths=photo_paths)
     
     # Удаляем временный файл
@@ -104,17 +110,20 @@ async def process_patrol_photo(message: Message, state: FSMContext, patrol_type:
             f"🔄 {patrol_type} - Метка {next_step}:\n"
             "1. Нажмите «📎»\n"
             "2. Выберите «Сделать фото»\n"
-            "3. Сделайте фото на метке {next_step}\n"
+            f"3. Сделайте фото на метке {next_step}\n"
             "4. Отправьте фото",
             reply_markup=get_cancel_keyboard()
         )
     else:
         # Отправляем все фото одним сообщением
         media = []
-        for i, photo_path in enumerate(photo_paths, 1):
+        for i, photo_data in enumerate(photo_paths, 1):
+            # Используем время, сохраненное при создании каждого фото
+            photo_time_str = photo_data['time'].strftime("%Y-%m-%d %H:%M:%S")
+            
             media.append(types.InputMediaPhoto(
-                media=FSInputFile(photo_path),
-                caption=f"{patrol_type} - Метка {i}\n⏰ Время: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}" if i == 1 else None
+                media=FSInputFile(photo_data['path']),
+                caption=f"{patrol_type} - Метка {i}\n⏰ Время: {photo_time_str}" if i == 1 else f"Метка {i} - {photo_time_str}"
             ))
         
         sent_message = await message.bot.send_media_group(
@@ -123,19 +132,19 @@ async def process_patrol_photo(message: Message, state: FSMContext, patrol_type:
         )
         
         # Удаляем все временные файлы
-        for photo_path in photo_paths:
-            if os.path.exists(photo_path):
-                os.remove(photo_path)
+        for photo_data in photo_paths:
+            if os.path.exists(photo_data['path']):
+                os.remove(photo_data['path'])
         
         await state.clear()
         await message.answer(f"✅ {patrol_type} завершен! Все фото отправлены в группу.", reply_markup=get_main_keyboard())
             
-        await gs_logger.log_event(  # Добавляем логирование
-            "Звонок в пожарную часть",
+        await gs_logger.log_event(
+            f"{patrol_type}",
             message.from_user.id,
             sent_message[0].message_id
         )
-
+   
 @router.message(F.text == "🔄 Обход Базы 1")
 async def handle_base1_patrol(message: Message, state: FSMContext):
     await state.set_state(Form.base1_patrol)
