@@ -10,6 +10,8 @@ from app.keyboards import get_cancel_keyboard, get_main_keyboard
 from app.config import GROUP_ID
 from app.utils import get_moscow_time
 from app.image_processor import ImageProcessor
+from app.google_sheets import gs_logger
+
 
 
 router = Router()
@@ -93,7 +95,7 @@ async def handle_welding_work_media(message: Message, state: FSMContext):
         else:
             media.append(InputMediaVideo(media=FSInputFile(media_item["path"])))
 
-        await message.bot.send_media_group(chat_id=GROUP_ID, media=media)
+        sent_message = await message.bot.send_media_group(chat_id=GROUP_ID, media=media)
 
         # Чистим временные файлы
         for m in [start, media_item]:
@@ -104,6 +106,12 @@ async def handle_welding_work_media(message: Message, state: FSMContext):
 
         await state.clear()
         await message.answer("✅ Все данные по сварочным работам отправлены в группу!", reply_markup=get_main_keyboard())
+            
+        await gs_logger.log_event(  # Добавляем логирование
+            "Сварочные/огневые работы",
+            message.from_user.id,
+            sent_message[0].message_id
+        )
 
     except Exception:
         await message.answer("❌ Произошла ошибка при обработке данных!", reply_markup=get_main_keyboard())

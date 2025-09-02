@@ -9,6 +9,8 @@ from app.states import Form
 from app.keyboards import get_cancel_keyboard, get_main_keyboard
 from app.config import GROUP_ID
 from app.utils import get_moscow_time
+from app.google_sheets import gs_logger
+
 
 router = Router()
 
@@ -47,9 +49,15 @@ async def handle_shift_start_video_note(message: Message, state: FSMContext):
     )
     
     # Затем отправляем сам видеокружок
-    await message.bot.send_video_note(
+    sent_message = await message.bot.send_video_note(
         chat_id=GROUP_ID,
         video_note=message.video_note.file_id
+    )
+    
+    await gs_logger.log_event(  # Добавляем логирование
+        "Начало смены",
+        message.from_user.id,
+        sent_message.message_id
     )
     
     await state.clear()

@@ -6,16 +6,19 @@ from aiogram.fsm.context import FSMContext
 
 from app.keyboards import get_main_keyboard
 from app.states import Form
+from app.google_sheets import gs_logger
+
 
 router = Router()
 
 @router.message(F.chat.type == ChatType.PRIVATE, CommandStart())
 async def cmd_start(message: Message, state: FSMContext):
     await state.clear()
-    await message.answer(
+    sent_message = await message.answer(
         "Добро пожаловать! Выберите действие:",
         reply_markup=get_main_keyboard()
     )
+    
 
 @router.callback_query(F.data == "cancel_action")
 async def handle_inline_cancel(callback: CallbackQuery, state: FSMContext):

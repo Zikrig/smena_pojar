@@ -11,6 +11,7 @@ from app.keyboards import get_cancel_keyboard, get_main_keyboard
 from app.image_processor import ImageProcessor
 from app.config import GROUP_ID
 from app.utils import get_moscow_time
+from app.google_sheets import gs_logger
 
 router = Router()
 
@@ -48,7 +49,7 @@ async def handle_emergency_photo(message: Message, state: FSMContext):
     if message.caption:
         caption += f"\n📝 Описание: {message.caption}"
     
-    await message.bot.send_photo(
+    sent_message = await message.bot.send_photo(
         chat_id=GROUP_ID,
         photo=output_file,
         caption=caption,
@@ -61,3 +62,8 @@ async def handle_emergency_photo(message: Message, state: FSMContext):
     
     await state.clear()
     await message.answer("✅ Сообщение о ЧП отправлено в группу!", reply_markup=get_main_keyboard())
+    await gs_logger.log_event(
+        "Чрезвычайная ситуация",
+        message.from_user.id,
+        sent_message.message_id
+    )

@@ -10,6 +10,7 @@ POSTGRES_USER = os.getenv("POSTGRES_USER")
 POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
 POSTGRES_HOST = os.getenv("POSTGRES_HOST", "postgres")
 POSTGRES_PORT = os.getenv("POSTGRES_PORT", "5432")
+GOOGLE_SHEET_ID = os.getenv("GOOGLE_SHEET_ID")
 
 # Исключенные пользователи (не получают рассылку)
 EXCLUDED_USERS = [123456789, 987654321]

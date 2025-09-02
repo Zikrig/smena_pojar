@@ -9,6 +9,7 @@ from app.states import Form
 from app.keyboards import get_fire_call_keyboard, get_main_keyboard
 from app.config import GROUP_ID
 from app.utils import get_moscow_time
+from app.google_sheets import gs_logger
 
 router = Router()
 
@@ -33,8 +34,14 @@ async def handle_fire_call_number(callback: CallbackQuery, state: FSMContext):
     )
     
     await state.clear()
-    await callback.message.answer(
+    sent_message = await callback.message.answer(
         f"✅ Информация о звонке на номер {number} отправлена в группу!",
         reply_markup=get_main_keyboard()
     )
     await callback.answer()
+    
+    await gs_logger.log_event(  # Добавляем логирование
+    "Звонок в пожарную часть",
+    callback.from_user.id,
+    sent_message.message_id
+    )

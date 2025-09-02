@@ -11,6 +11,8 @@ from app.keyboards import get_cancel_keyboard, get_main_keyboard, get_patrol_key
 from app.image_processor import ImageProcessor
 from app.config import GROUP_ID
 from app.utils import get_moscow_time
+from app.google_sheets import gs_logger
+
 
 router = Router()
 
@@ -115,7 +117,7 @@ async def process_patrol_photo(message: Message, state: FSMContext, patrol_type:
                 caption=f"{patrol_type} - Метка {i}\n⏰ Время: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}" if i == 1 else None
             ))
         
-        await message.bot.send_media_group(
+        sent_message = await message.bot.send_media_group(
             chat_id=GROUP_ID,
             media=media
         )
@@ -127,6 +129,12 @@ async def process_patrol_photo(message: Message, state: FSMContext, patrol_type:
         
         await state.clear()
         await message.answer(f"✅ {patrol_type} завершен! Все фото отправлены в группу.", reply_markup=get_main_keyboard())
+            
+        await gs_logger.log_event(  # Добавляем логирование
+            "Звонок в пожарную часть",
+            message.from_user.id,
+            sent_message[0].message_id
+        )
 
 @router.message(F.text == "🔄 Обход Базы 1")
 async def handle_base1_patrol(message: Message, state: FSMContext):

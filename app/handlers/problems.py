@@ -11,6 +11,8 @@ from app.keyboards import get_cancel_keyboard, get_main_keyboard, get_resolved_k
 from app.image_processor import ImageProcessor
 from app.config import GROUP_ID
 from app.utils import get_moscow_time
+from app.google_sheets import gs_logger
+
 
 router = Router()
 
@@ -57,6 +59,11 @@ async def handle_problem_report_photo(message: Message, state: FSMContext):
         parse_mode=ParseMode.HTML,
         reply_markup=get_resolved_keyboard()
     )
+    await gs_logger.log_event(  # Добавляем логирование
+        "Сообщение о проблеме",
+        message.from_user.id,
+        sent_message.message_id
+    )
     
     # Прикрепляем (закрепляем) сообщение в группе
     try:
@@ -102,6 +109,13 @@ async def handle_problem_resolved(callback: CallbackQuery):
     )
     
     await callback.answer("Проблема отмечена как решенная!")
+    
+    await gs_logger.log_event(  # Добавляем логирование
+        "Проблема решена",
+        callback.from_user.id,
+        callback.message.message_id
+    )
+    
 
 # Обработчик ответов на сообщения о проблемах
 @router.message(F.chat.type != ChatType.PRIVATE, F.reply_to_message)
@@ -144,6 +158,12 @@ async def handle_problem_solution(message: Message):
             message_id=replied_message.message_id,
             caption=new_caption,
             parse_mode=ParseMode.HTML
+        )
+        
+        await gs_logger.log_event(  # Добавляем логирование
+            "Проблема решена",
+            message.from_user.id,
+            message.message_id
         )
     except Exception as e:
         print(f"Не удалось обновить сообщение о проблеме: {e}")
