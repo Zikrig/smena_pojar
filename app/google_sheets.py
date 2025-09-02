@@ -77,7 +77,7 @@ class GoogleSheetsLogger:
             
             if not existing_data:
                 # Добавляем заголовки, если лист пустой
-                headers = ["Дата", "Время", "Событие", "Автор", "Ссылка на пост"]
+                headers = ["Дата", "Время", "Событие", "Автор", "Ссылка на пост", "Текст"]
                 await asyncio.to_thread(
                     self.worksheet.append_row,
                     headers
@@ -92,7 +92,7 @@ class GoogleSheetsLogger:
             logger.error(traceback.format_exc())
             return False
 
-    async def log_event(self, event_type: str, user_id: int, message_id: int = None) -> bool:
+    async def log_event(self, event_type: str, user_id: int, message_id: int = None, text: str = "") -> bool:
         """Логирование события в Google Sheets"""
         logger.info(f"Попытка записи события: {event_type}, user_id: {user_id}, message_id: {message_id}")
         
@@ -118,7 +118,7 @@ class GoogleSheetsLogger:
             time_str = now.strftime("%H:%M:%S")
             
             # Добавляем запись в таблицу
-            row = [date_str, time_str, event_type, f"{full_name} (@{username})", message_link]
+            row = [date_str, time_str, event_type, f"{full_name} (@{username})", message_link, text]
             logger.info(f"Добавляем строку: {row}")
             
             # Используем asyncio.to_thread для синхронной операции
@@ -135,7 +135,7 @@ class GoogleSheetsLogger:
             import traceback
             logger.error(traceback.format_exc())
             return False
-
+        
     async def _get_user_info(self, user_id: int) -> Dict[str, Any]:
         """Получение информации о пользователе из БД"""
         try:

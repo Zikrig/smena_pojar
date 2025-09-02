@@ -65,5 +65,6 @@ async def handle_emergency_photo(message: Message, state: FSMContext):
     await gs_logger.log_event(
         "Чрезвычайная ситуация",
         message.from_user.id,
-        sent_message.message_id
+        sent_message.message_id,
+        message.caption if message.caption else "Фото без описания"
     )

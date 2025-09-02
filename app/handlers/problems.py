@@ -62,7 +62,8 @@ async def handle_problem_report_photo(message: Message, state: FSMContext):
     await gs_logger.log_event(  # Добавляем логирование
         "Сообщение о проблеме",
         message.from_user.id,
-        sent_message.message_id
+        sent_message.message_id,
+        message.caption if message.caption else "Фото без описания"
     )
     
     # Прикрепляем (закрепляем) сообщение в группе
@@ -160,10 +161,13 @@ async def handle_problem_solution(message: Message):
             parse_mode=ParseMode.HTML
         )
         
+        text = message.text if message.text else message.caption
+        
         await gs_logger.log_event(  # Добавляем логирование
             "Проблема решена",
             message.from_user.id,
-            message.message_id
+            message.message_id,
+            text
         )
     except Exception as e:
         print(f"Не удалось обновить сообщение о проблеме: {e}")
