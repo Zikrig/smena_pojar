@@ -50,3 +50,11 @@ def get_resolved_keyboard():
     builder = InlineKeyboardBuilder()
     builder.button(text="✅ Решено", callback_data=f"resolve_problem")
     return builder.as_markup()
+
+# Добавим новую клавиатуру для шагов обхода с кнопкой проблемы
+def get_patrol_step_keyboard():
+    builder = InlineKeyboardBuilder()
+    builder.button(text="❌ Отмена", callback_data="cancel_action")
+    builder.button(text="⚠️ Проблема", callback_data="report_problem")
+    builder.adjust(2)
+    return builder.as_markup()

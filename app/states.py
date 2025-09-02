@@ -10,3 +10,4 @@ class Form(StatesGroup):
     emergency = State()
     fire_call = State()
     patrol_selection = State()
+    patrol_problem = State()

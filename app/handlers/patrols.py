@@ -5,9 +5,10 @@ from aiogram.enums import ChatType
 from aiogram.fsm.context import FSMContext
 from datetime import datetime
 from aiogram.enums import ParseMode
+from aiogram.filters import or_f
 
 from app.states import Form
-from app.keyboards import get_cancel_keyboard, get_main_keyboard, get_patrol_keyboard
+from app.keyboards import get_cancel_keyboard, get_main_keyboard, get_patrol_keyboard, get_patrol_step_keyboard
 from app.image_processor import ImageProcessor
 from app.config import GROUP_ID
 from app.utils import get_moscow_time
@@ -24,6 +25,11 @@ from aiogram.types import CallbackQuery
 async def handle_patrol_selection(message: Message, state: FSMContext):
     await state.set_state(Form.patrol_selection)
     await message.answer(
+        "На каждом этапе обхода вы можете сообщить о проблеме. Для этого:\n"
+        "1. Нажмите под ⚠️ Проблема (под сообщением рядом с кнопкой Отмена)\n"
+        "2. Опишите проблему одним сообщением\n"
+        "3. После этого уже отправьте картинку\n\n"
+        "Если никакой проблемы нет, то просто отправьте картинку\n"
         "Выберите объект для обхода:",
         reply_markup=get_patrol_keyboard()
     )
@@ -39,7 +45,7 @@ async def handle_base1_selection(callback: CallbackQuery, state: FSMContext):
         "2. Выберите «Сделать фото»\n"
         "3. Сделайте фото на метке 1\n"
         "4. Отправьте фото",
-        reply_markup=get_cancel_keyboard()
+        reply_markup=get_patrol_step_keyboard()
     )
     await callback.answer()
 
@@ -53,7 +59,7 @@ async def handle_atp_selection(callback: CallbackQuery, state: FSMContext):
         "2. Выберите «Сделать фото»\n"
         "3. Сделайте фото на метке 1\n"
         "4. Отправьте фото",
-        reply_markup=get_cancel_keyboard()
+        reply_markup=get_patrol_step_keyboard()
     )
     await callback.answer()
 
@@ -67,7 +73,7 @@ async def handle_base2_selection(callback: CallbackQuery, state: FSMContext):
         "2. Выберите «Сделать фото»\n"
         "3. Сделайте фото на метке 1\n"
         "4. Отправьте фото",
-        reply_markup=get_cancel_keyboard()
+        reply_markup=get_patrol_step_keyboard()
     )
     await callback.answer()
     
@@ -75,6 +81,7 @@ async def process_patrol_photo(message: Message, state: FSMContext, patrol_type:
     data = await state.get_data()
     current_step = data.get('patrol_step', 1)
     photo_paths = data.get('photo_paths', [])
+    problems = data.get('problems', {}) 
     
     # Получаем текущее время для этого конкретного фото
     photo_time = get_moscow_time()
@@ -112,23 +119,40 @@ async def process_patrol_photo(message: Message, state: FSMContext, patrol_type:
             "2. Выберите «Сделать фото»\n"
             f"3. Сделайте фото на метке {next_step}\n"
             "4. Отправьте фото",
-            reply_markup=get_cancel_keyboard()
+            reply_markup=get_patrol_step_keyboard()  # Используем новую клавиатуру
         )
     else:
-        # Отправляем все фото одним сообщением
+        # Формируем подпись с учетом проблем
+        caption = f"{patrol_type}"
+        if problems:
+            problem_points = ", ".join([f"метка {k}" for k in problems.keys()])
+            caption += f"\n⚠️ Проблемы на: {problem_points}"
+        
+        # Отправляем медиагруппу
         media = []
         for i, photo_data in enumerate(photo_paths, 1):
-            # Используем время, сохраненное при создании каждого фото
             photo_time_str = photo_data['time'].strftime("%Y-%m-%d %H:%M:%S")
+            media_caption = f"{caption}\nМетка {i} - {photo_time_str}" if i == 1 else None
+            
+            if str(i) in problems:
+                media_caption += f"\nПроблема: {problems[str(i)]}"
             
             media.append(types.InputMediaPhoto(
                 media=FSInputFile(photo_data['path']),
-                caption=f"{patrol_type} - Метка {i}\n⏰ Время: {photo_time_str}" if i == 1 else f"Метка {i} - {photo_time_str}"
+                caption=media_caption
             ))
         
         sent_message = await message.bot.send_media_group(
             chat_id=GROUP_ID,
             media=media
+        )
+
+        # Логируем событие
+        await gs_logger.log_event(
+            patrol_type,
+            message.from_user.id,
+            sent_message[0].message_id,
+            "Проблемы: " + ", ".join(problems.values()) if problems else "Успешно"
         )
         
         # Удаляем все временные файлы
@@ -144,7 +168,53 @@ async def process_patrol_photo(message: Message, state: FSMContext, patrol_type:
             message.from_user.id,
             sent_message[0].message_id
         )
-   
+
+@router.callback_query(
+    or_f(Form.base1_patrol, Form.atp_patrol, Form.base2_patrol), 
+    F.data == "report_problem"
+)
+async def handle_problem_report(callback: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    current_step = data.get('patrol_step', 1)
+    
+    await state.set_state(Form.patrol_problem)
+    await state.update_data(problem_step=current_step)
+    
+    await callback.message.answer(
+        "Опишите проблему:",
+        reply_markup=get_cancel_keyboard()
+    )
+    await callback.answer()
+
+# Добавим обработчик для описания проблемы
+@router.message(Form.patrol_problem, F.text)
+async def handle_problem_description(message: Message, state: FSMContext):
+    data = await state.get_data()
+    problem_step = data.get('problem_step')
+    problems = data.get('problems', {})
+    
+    problems[str(problem_step)] = message.caption if not message.text else message.text
+    await state.update_data(problems=problems)
+    
+    # Возвращаемся к состоянию обхода
+    patrol_type = data.get('patrol_type')
+    if patrol_type == "Обход Базы 1":
+        await state.set_state(Form.base1_patrol)
+    elif patrol_type == "Обход АТП":
+        await state.set_state(Form.atp_patrol)
+    else:
+        await state.set_state(Form.base2_patrol)
+    
+    await message.answer(
+        f"Проблема на метке {problem_step} записана. Продолжаем обход:\n"
+        f"🔄 {patrol_type} - Метка {problem_step}:\n"
+        "1. Нажмите «📎»\n"
+        "2. Выберите «Сделать фото»\n"
+        f"3. Сделайте фото на метке {problem_step}\n"
+        "4. Отправьте фото",
+        reply_markup=get_patrol_step_keyboard()
+    )
+    
 @router.message(F.text == "🔄 Обход Базы 1")
 async def handle_base1_patrol(message: Message, state: FSMContext):
     await state.set_state(Form.base1_patrol)
@@ -155,7 +225,7 @@ async def handle_base1_patrol(message: Message, state: FSMContext):
         "2. Выберите «Сделать фото»\n"
         "3. Сделайте фото на метке 1\n"
         "4. Отправьте фото",
-        reply_markup=get_cancel_keyboard()
+        reply_markup=get_patrol_step_keyboard()
     )
 
 @router.message(Form.base1_patrol, F.photo)
@@ -173,7 +243,7 @@ async def handle_atp_patrol(message: Message, state: FSMContext):
         "2. Выберите «Сделать фото»\n"
         "3. Сделайте фото на метке 1\n"
         "4. Отправьте фото",
-        reply_markup=get_cancel_keyboard()
+        reply_markup=get_patrol_step_keyboard()
     )
 
 @router.message(Form.atp_patrol, F.photo)
@@ -191,7 +261,7 @@ async def handle_base2_patrol(message: Message, state: FSMContext):
         "2. Выберите «Сделать фото»\n"
         "3. Сделайте фото на метке 1\n"
         "4. Отправьте фото",
-        reply_markup=get_cancel_keyboard()
+        reply_markup=get_patrol_step_keyboard()
     )
 
 @router.message(Form.base2_patrol, F.photo)
