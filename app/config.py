@@ -13,4 +13,4 @@ POSTGRES_PORT = os.getenv("POSTGRES_PORT", "5432")
 GOOGLE_SHEET_ID = os.getenv("GOOGLE_SHEET_ID")
 
 # Исключенные пользователи (не получают рассылку)
-EXCLUDED_USERS = [123456789, 987654321]
+EXCLUDED_USERS = [184374602]

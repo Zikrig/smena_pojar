@@ -62,6 +62,13 @@ async def start_scheduler():
         args=[bot, "all", EXCLUDED_USERS]
     )
     
+        # Рассылка в 20:00 - обходы базы 1
+    scheduler.add_job(
+        send_patrol_reminders,
+        CronTrigger(hour=20, minute=00),
+        args=[bot, "base1_evening", EXCLUDED_USERS]
+    )
+    
     scheduler.start()
 
 # Запуск бота

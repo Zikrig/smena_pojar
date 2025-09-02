@@ -15,6 +15,8 @@ async def send_patrol_reminders(bot, patrol_type, excluded_users):
             message = "⏰ Напоминание: 8:15 - Сделайте обход базы-1"
         elif patrol_type == "all":
             message = "⏰ Напоминание: 13:00 - Сделайте обходы АТП и базы-2"
+        elif patrol_type == "base1_evening":
+            message = "⏰ Напоминание: 20:00 - Сделайте обход базы-1"
         else:
             return
             
