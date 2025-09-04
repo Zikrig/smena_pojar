@@ -13,19 +13,18 @@ from app.config import GROUP_ID
 from app.utils import get_moscow_time
 from app.google_sheets import gs_logger
 
-
 router = Router()
 
-@router.message(F.chat.type == ChatType.PRIVATE, F.text == "⚠️ Проблема")
+@router.message(F.chat.type == ChatType.PRIVATE, F.text == "Сообщение для руководства")
 async def handle_problem_report(message: Message, state: FSMContext):
     await state.set_state(Form.problem_report)
     await message.answer(
         "⚠️ Сообщение о проблеме:\n"
         "1. Нажмите «📎»\n"
-        "2. Выберите «Сделать фото»\n"
-        "3. Сделайте фото проблемы\n"
-        "4. Добавьте описание в подписи к фото\n"
-        "5. Отправьте фото",
+        "2. Выберите «Сделать фото» или «Записать видео»\n"
+        "3. Сделайте фото или видео проблемы\n"
+        "4. Добавьте описание в подписи к медиафайлу\n"
+        "5. Отправьте фото или видео",
         reply_markup=get_cancel_keyboard()
     )
 
@@ -60,7 +59,7 @@ async def handle_problem_report_photo(message: Message, state: FSMContext):
         reply_markup=get_resolved_keyboard()
     )
     await gs_logger.log_event(  # Добавляем логирование
-        "Сообщение о проблеме",
+        "Сообщение о проблеме (Фото)",
         message.from_user.id,
         sent_message.message_id,
         message.caption if message.caption else "Фото без описания"
@@ -78,6 +77,43 @@ async def handle_problem_report_photo(message: Message, state: FSMContext):
     # Удаляем временные файлы
     os.remove(input_path)
     os.remove(output_path)
+    
+    await state.clear()
+    await message.answer("✅ Сообщение о проблеме отправлено и закреплено в группе!", reply_markup=get_main_keyboard())
+
+@router.message(Form.problem_report, F.video)
+async def handle_problem_report_video(message: Message, state: FSMContext):
+    # Получаем текущее время
+    current_time = get_moscow_time().strftime("%Y-%m-%d %H:%M:%S")
+    
+    # Формируем подпись
+    caption = f"⚠️ Сообщение о проблеме\n⏰ Время: {current_time}"
+    if message.caption:
+        caption += f"\n📝 Описание: {message.caption}"
+    
+    # Отправляем видео по file_id
+    sent_message = await message.bot.send_video(
+        chat_id=GROUP_ID,
+        video=message.video.file_id,
+        caption=caption,
+        parse_mode=ParseMode.HTML,
+        reply_markup=get_resolved_keyboard()
+    )
+    await gs_logger.log_event(  # Добавляем логирование
+        "Сообщение о проблеме (Видео)",
+        message.from_user.id,
+        sent_message.message_id,
+        message.caption if message.caption else "Видео без описания"
+    )
+    
+    # Прикрепляем (закрепляем) сообщение в группе
+    try:
+        await message.bot.pin_chat_message(
+            chat_id=GROUP_ID,
+            message_id=sent_message.message_id
+        )
+    except Exception as e:
+        print(f"Не удалось закрепить сообщение: {e}")
     
     await state.clear()
     await message.answer("✅ Сообщение о проблеме отправлено и закреплено в группе!", reply_markup=get_main_keyboard())
@@ -123,15 +159,12 @@ async def handle_problem_resolved(callback: CallbackQuery):
 async def handle_problem_solution(message: Message):
     replied_message = message.reply_to_message
     # Проверяем, что это ответ на сообщение о проблеме
-
     if not replied_message.caption or not replied_message.caption.startswith("⚠️"):
         return
     
-    # await messga.answer()
     if (message.from_user and 
         message.from_user.is_bot):
         return
-    
     
     # Формируем ссылку на ответное сообщение
     chat = await message.bot.get_chat(GROUP_ID)

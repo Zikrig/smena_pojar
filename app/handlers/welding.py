@@ -16,11 +16,11 @@ from app.google_sheets import gs_logger
 
 router = Router()
 
-@router.message(F.chat.type == ChatType.PRIVATE, F.text == "🔥 Сварочные/огневые работы")
+@router.message(F.chat.type == ChatType.PRIVATE, F.text == "🔥 Сварка")
 async def handle_welding_work(message: Message, state: FSMContext):
     await state.set_state(Form.welding_work)
     await message.answer(
-        "🔥 Сварочные/огневые работы:\n"
+        "🔥 Сварка:\n"
         "Введите данные в формате:\n"
         "<b>Место работы / ответственные / вид работ</b>\n\n"
         "Пример: <code>Цех 1 / Савельев, Тарасов / сварка металлоконструкций</code>",
@@ -31,7 +31,7 @@ async def handle_welding_work(message: Message, state: FSMContext):
 @router.message(Form.welding_work, F.text)
 async def handle_welding_work_data(message: Message, state: FSMContext):
     await state.update_data(welding_info=message.text)
-    await message.answer("📸 Теперь отправьте фото/видео начала работ:", reply_markup=get_cancel_keyboard())
+    await message.answer("📸 ПЕРВЫМ СООБЩЕНИЕМ ОТПРАВЬТЕ фото/видео НАЧАЛА работ", reply_markup=get_cancel_keyboard())
 
 @router.message(Form.welding_work, F.photo | F.video)
 async def handle_welding_work_media(message: Message, state: FSMContext):
@@ -71,7 +71,7 @@ async def handle_welding_work_media(message: Message, state: FSMContext):
         # Если это первое медиа — сохраняем и ждём второе
         if "start_media" not in data:
             await state.update_data(start_media=media_item)
-            await message.answer("✅ Фото/видео начала работ принято. Теперь отправьте фото/видео окончания работ:", reply_markup=get_cancel_keyboard())
+            await message.answer("✅ Фото/видео начала работ принято. ВТОРЫМ СООБЩЕНИЕМ ОТПРАВЬТЕ фото/видео ОКОНЧАНИЯ работ:", reply_markup=get_cancel_keyboard())
             return
 
         # Второе медиа — собираем альбом
