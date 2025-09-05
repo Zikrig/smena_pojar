@@ -51,10 +51,18 @@ def get_resolved_keyboard():
     builder.button(text="✅ Решено", callback_data=f"resolve_problem")
     return builder.as_markup()
 
-# Добавим новую клавиатуру для шагов обхода с кнопкой проблемы
+
 def get_patrol_step_keyboard():
     builder = InlineKeyboardBuilder()
     builder.button(text="❌ Отмена", callback_data="cancel_action")
     builder.button(text="❗️ Нарушение", callback_data="report_problem")
     builder.adjust(2)
+    return builder.as_markup()
+
+def get_patrol_in_progress_keyboard():
+    builder = InlineKeyboardBuilder()
+    builder.button(text="❗️ Нарушение", callback_data="report_problem")
+    builder.button(text="✅ Завершить обход", callback_data="finish_patrol")
+    builder.button(text="❌ Отмена", callback_data="cancel_action")
+    builder.adjust(1, 1, 1)
     return builder.as_markup()
